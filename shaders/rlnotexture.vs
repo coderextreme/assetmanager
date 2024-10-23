@@ -1,28 +1,17 @@
-precision highp float;
+#version 330 core
 
-attribute vec3 position;
-attribute vec3 normal;
-attribute vec2 texcoord;
+in mat4 model;
+in mat4 view;
+in mat4 projection;
 
-uniform mat4 matrix_viewProjection;
-uniform mat4 matrix_view;
+layout(location=0) in vec3 v_position;
 
-uniform vec3 chromaticDispertion;
-uniform float bias;
-uniform float scale;
-uniform float power;
-uniform float a;
-uniform float b;
-uniform float c;
-uniform float d;
-uniform float tdelta;
-uniform float pdelta;
-
-varying vec3 t;
-varying vec3 tr;
-varying vec3 tg;
-varying vec3 tb;
-varying float rfac;
+in float a;
+in float b;
+in float c;
+in float d;
+in float tdelta;
+in float pdelta;
 
 vec3 cart2sphere(vec3 p) {
      float r = pow(p.x*p.x + p.y*p.y + p.z*p.z, 0.5);
@@ -57,25 +46,6 @@ vec3 rose_normal(vec3 p) {
 
 void main()
 {
-    mat3 mvm3=mat3(
-                matrix_view[0].x,
-                matrix_view[0].y,
-                matrix_view[0].z,
-                matrix_view[1].x,
-                matrix_view[1].y,
-                matrix_view[1].z,
-                matrix_view[2].x,
-                matrix_view[2].y,
-                matrix_view[2].z
-    );
-    gl_Position = matrix_viewProjection*vec4(rose(cart2sphere(position)), 1.0);
-    vec3 incident = normalize((matrix_view * vec4(rose(cart2sphere(position)), 1.0)).xyz);
-
-    vec3 fragNormal = mvm3*rose_normal(position);
-    t = reflect(incident, fragNormal)*mvm3;
-    tr = refract(incident, fragNormal, chromaticDispertion.x)*mvm3;
-    tg = refract(incident, fragNormal, chromaticDispertion.y)*mvm3;
-    tb = refract(incident, fragNormal, chromaticDispertion.z)*mvm3;
-
-    rfac = bias + scale * pow(0.5+0.5*dot(incident, fragNormal), power);
+    gl_Position = projection * view * model * vec4(rose(cart2sphere(v_position)), 1.0);
+    vec3 fragNormal = rose_normal(v_position);
 }
