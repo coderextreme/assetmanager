@@ -1,4 +1,4 @@
-precision highp float;
+#version 330
 
 void main()
 {

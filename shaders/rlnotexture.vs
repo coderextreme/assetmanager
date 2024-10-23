@@ -1,4 +1,4 @@
-#version 330 core
+#version 330
 
 in mat4 model;
 in mat4 view;

@@ -16,20 +16,17 @@ proc main =
   let backgroundTexture = loadTextureFromImage(img)
 
   var camera = Camera(
-    position : Vector3( x:0.0f, y:10.0f, z:10.0f ),
+    position : Vector3( x:0.0f, y:0.0f, z:10.0f ),
     target :   Vector3( x:0.0f, y:0.0f, z:0.0f ),
     up :       Vector3( x:0.0f, y:1.0f, z:0.0f ),
     fovy : 45.0f,
     projection : Perspective
   )
 
-  let cube = genMeshCube(4.0f, 4.0f, 4.0f)
-  let mesh = loadModelFromMesh(cube)
-  #let sphere = genMeshSphere(4, 128, 128)
-  #let mesh = loadModelFromMesh(sphere)
-  if mesh.meshCount == 0 or mesh.materialCount == 0:
-      echo "FAILED to load sphere model."
-      return
+  #let cube = genMeshCube(4.0f, 4.0f, 4.0f)
+  #let mesh = loadModelFromMesh(cube)
+  let sphere = genMeshSphere(4, 128, 128)
+  let mesh = loadModelFromMesh(sphere)
 
   let shader = loadShader("shaders/rlnotexture.vs", "shaders/rlnotexture.fs")
 
@@ -40,8 +37,8 @@ proc main =
   let tdeltaLoc = getShaderLocation(shader, "tdelta")
   let pdeltaLoc = getShaderLocation(shader, "pdelta")
 
-  let a: float32 = 20
-  let b: float32 = 10
+  let a: float32 = 2
+  let b: float32 = 1
   let c: float32 = 4
   let d: float32 = 4
   let tdelta: float32 = 0
@@ -66,7 +63,7 @@ proc main =
     updateCamera(camera, Orbital)
     beginShaderMode(shader)
     beginMode3D(camera)
-    drawModel(mesh,Vector3(x:0, y:0, z:0), 1.0f, WHITE)
+    drawModel(mesh,Vector3(x:0, y:0, z:0), 1.0f, Blue)
     endMode3D()
     endShaderMode()
     endDrawing()
