@@ -150,8 +150,9 @@ proc main() =
   initWindow(screenWidth, screenHeight, "JSONverse shaders example - rhodonea")
   defer: closeWindow()
   var mesh = genMeshCube(18.0f, 18.0f, 18.0f)
-  #var mesh = genMeshSphere(4, 64, 64)
   var model = loadModelFromMesh(move(mesh))
+  var mesh2 = genMeshSphere(4, 64, 64)
+  var model2 = loadModelFromMesh(move(mesh2))
   # var shader = loadShaderFromMemory(vertexShader, fragmentShader)
   var hdrImage = loadImage("resources/images/all_probes/stpeters_cross.png")
   var hdrTexture = loadTextureCubemap(hdrImage, CubemapLayout.CrossThreeByFour)
@@ -173,12 +174,15 @@ proc main() =
   # Debugging output
   if model.meshCount == 0:
     echo "Failed to load model"
+  if model2.meshCount == 0:
+    echo "Failed to load model22"
   if shader.id == 0:
     echo "Failed to load shader"
 
   # THIS FOULS STUFF UP.  DON'T DO IT!
   # model.materials[0].shader = shader
   model.materials[0].maps[MaterialMapIndex.Cubemap].texture = hdrTexture
+  model2.materials[0].maps[MaterialMapIndex.Cubemap].texture = hdrTexture
 
   let img = genImageChecked(64, 64, 32, 32, DarkBrown, DarkGray)
   let backgroundTexture = loadTextureFromImage(img)
@@ -257,8 +261,13 @@ proc main() =
     updateCamera(camera, Orbital)
     beginShaderMode(shader)
     #drawSphereWires(Vector3(x:0, y:0, z:0), 3.0f, 64, 64, Red)
+
     drawModelWires(model, Vector3(x:0, y:0, z:0), 0.5f, Blue) 
-    #drawMesh(mesh, model.materials[0], rotateXYZ(rotationAngles))
+    drawMesh(mesh, model.materials[0], rotateXYZ(rotationAngles))
+
+    drawModelWires(model2, Vector3(x:0, y:0, z:0), 0.5f, Blue) 
+    drawMesh(mesh2, model2.materials[0], rotateXYZ(rotationAngles))
+
     endShaderMode()
     endMode3D()
     endDrawing()
