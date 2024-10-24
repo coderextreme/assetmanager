@@ -25,7 +25,7 @@ proc main =
   #var skyboxModel = loadModel("resources/JoeSkinTexcoordDisplacerKickUpdate2Export.gltf")
 
 
-  let camera = Camera(
+  var camera = Camera(
     position: Vector3(x: 0, y: 0, z: 6),
     target: Vector3(x: 0, y: 0, z: 0),
     up: Vector3(x: 0, y: 1, z: 0),
@@ -66,7 +66,7 @@ proc main =
   #skyboxModel.materials[0].maps[MaterialMapIndex.Albedo].color = White
   skyboxModel.materials[0].maps[MaterialMapIndex.Albedo].texture = texture
 
-  let shader = loadShader("shaders/rlskybox.vs", "shaders/rlskybox.fs")
+  let shader = loadShader("shaders/glsl330/rlskybox.vs", "shaders/glsl330/rlskybox.fs")
   let texLoc = getShaderLocation(shader, "texture0")
   let positionLoc = getShaderLocation(shader, "position")
   setShaderValueTexture(shader, texLoc, texture)
@@ -110,6 +110,7 @@ proc main =
           drawCube( Vector3(x:x.float32, y:1.5f, z:z.float32), 1, 1, 1, LIME );
           drawCube( Vector3(x:x.float32, y:0.5f, z:z.float32), 0.25f, 1, 0.25f, BROWN );
     beginMode3D(camera)
+    updateCamera(camera, Orbital)
 
     # Animation
     beginShaderMode(shader)

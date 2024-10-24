@@ -1,10 +1,10 @@
-#version 330
+#version 120
 
 in mat4 model;
 in mat4 view;
 in mat4 projection;
 
-layout(location=0) in vec3 v_position;
+in vec4 position;
 
 in float a;
 in float b;
@@ -46,6 +46,5 @@ vec3 rose_normal(vec3 p) {
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(rose(cart2sphere(v_position)), 1.0);
-    vec3 fragNormal = rose_normal(v_position);
+    gl_Position = projection * view * model * vec4(rose(cart2sphere(position.xyz)), 1.0);
 }
