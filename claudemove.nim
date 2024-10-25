@@ -79,7 +79,7 @@ proc main() =
 
   while not windowShouldClose():
     # Update shader uniform
-    let time = 0.int32 #getTime().float32
+    let time = getTime().float32
     setShaderValue(shader, timeLoc, time)
 
     # Update camera
@@ -89,18 +89,17 @@ proc main() =
     clearBackground(RAYWHITE)
     
     beginMode3D(camera)
-    drawModel(model, Vector3(x: 0, y: 0, z: 0), 1.0, WHITE)
+    beginShaderMode(shader)
+    drawModel(model, Vector3(x: 0, y: 0, z: 0), 1.0, Green)
     drawGrid(10, 1.0)
     
     drawFPS(10, 10)
-    drawText("Use mouse wheel to zoom in-out", 10, 40, 20, GRAY)
-    drawText("Use mouse to rotate camera", 10, 70, 20, GRAY)
+    drawText("Use mouse wheel to zoom in-out", 10, 40, 20, Gray)
+    drawText("Use mouse to rotate camera", 10, 70, 20, Gray)
+    endShaderMode()
     endMode3D()
     endDrawing()
 
-  # Clean up
-  #unloadShader(shader)
-  #unloadModel(model)
   closeWindow()
 
 main()

@@ -2,23 +2,22 @@
 
 import raylib, raymath, rlgl
 
-type CubemapShader = object
-  shader: Shader
-  cubemapLoc: ShaderLocation
-  textureLoc: ShaderLocation
-  viewPosLoc: ShaderLocation
-  reflectStrengthLoc: ShaderLocation
-
 const
   screenWidth = 800
   screenHeight = 450
   vertexShader =
     """
 #version 330 core
-in mat4 model;
+uniform mat4 mvp;
 in mat4 view;
-in mat4 projection;
-in vec4 position;
+
+in vec3 vertexPosition;
+in vec2 vertexTexCoord;
+in vec3 vertexNormal;
+in vec4 vertexColor;
+
+out vec2 fragTexCoord;
+out vec4 fragColor;
 
 uniform vec3 chromaticDispertion;
 uniform float bias;
@@ -30,6 +29,7 @@ uniform float c;
 uniform float d;
 uniform float tdelta;
 uniform float pdelta;
+uniform float time;
 
 out vec3 t;
 out vec3 tr;
@@ -88,10 +88,13 @@ void main()
                 view[2].y,
                 view[2].z
     );
-    gl_Position = projection * view * model * vec4(rose(cart2sphere(position.xyz), a, b, c, d, tdelta, pdelta), 1.0);
-    vec3 fragNormal = mvm3*rose_normal(position.xyz, a, b, c, d, tdelta, pdelta);
+    vec3 position = vertexPosition;
+    position.y += sin(time + position.x) * 0.5;
+    // gl_Position = mvp * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0);
+    gl_Position = mvp * vec4(position, 1.0);
+    vec3 fragNormal = mvm3*rose_normal(position, a, b, c, d, tdelta, pdelta);
 
-    vec3 incident = normalize((view * vec4(rose(cart2sphere(position.xyz), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
+    vec3 incident = normalize((view * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
 
     t = reflect(incident, fragNormal)*mvm3;
     tr = refract(incident, fragNormal, chromaticDispertion.x)*mvm3;
@@ -99,6 +102,8 @@ void main()
     tb = refract(incident, fragNormal, chromaticDispertion.z)*mvm3;
 
     rfac = bias + scale * pow(0.5+0.5*dot(incident, fragNormal), power);
+    fragTexCoord = vertexTexCoord;
+    fragColor = vertexColor;
 }
 
 """
@@ -112,7 +117,7 @@ in vec3 tr;
 in vec3 tg;
 in vec3 tb;
 in float rfac;
-// in vec2 texCoord;
+in vec2 fragTexCoord;
 out vec4 fragColor;
 
 void main()
@@ -135,29 +140,22 @@ proc initCubemap(faces: array[6, string]): TextureCubemap =
 
   result = loadTextureCubemap(images[0], CubemapLayout.CrossThreeByFour)
 
-proc setupCubemapShader(): CubemapShader =
-  result.shader = loadShaderFromMemory(vertexShader, fragmentShader)
-  
-  # Get shader locations for all uniforms
-  result.cubemapLoc = getShaderLocation(result.shader, "cubemap")
-  result.textureLoc = getShaderLocation(result.shader, "textureSampler")
-  result.viewPosLoc = getShaderLocation(result.shader, "viewPos")
-  result.reflectStrengthLoc = getShaderLocation(result.shader, "reflectStrength")
 
 proc main() =
   # Initialization
   # --------------------------------------------------------------------------------------
   initWindow(screenWidth, screenHeight, "JSONverse shaders example - rhodonea")
   defer: closeWindow()
-  var mesh = genMeshCube(18.0f, 18.0f, 18.0f)
+  var mesh = genMeshSphere(4, 64, 64)
   var model = loadModelFromMesh(move(mesh))
-  var mesh2 = genMeshSphere(4, 64, 64)
+  var mesh2 = genMeshCube(18.0f, 18.0f, 18.0f)
   var model2 = loadModelFromMesh(move(mesh2))
-  # var shader = loadShaderFromMemory(vertexShader, fragmentShader)
-  var hdrImage = loadImage("resources/images/all_probes/stpeters_cross.png")
-  var hdrTexture = loadTextureCubemap(hdrImage, CubemapLayout.CrossThreeByFour)
-  #let hdrTexture = loadTextureCubemap(hdrImage, CubemapLayout.Panorama)
-  #let hdrTexture = loadTextureCubemap(hdrImage, CubemapLayout.AutoDetect)
+  var shader = loadShaderFromMemory(vertexShader, fragmentShader)
+  #var hdrImage = loadImage("resources/images/all_probes/stpeters_cross.png")
+  #var hdrTexture = loadTextureCubemap(hdrImage, CubemapLayout.CrossThreeByFour)
+  #var hdrTexture = loadTextureCubemap(hdrImage, CubemapLayout.Panorama)
+  #var hdrTexture = loadTextureCubemap(hdrImage, CubemapLayout.AutoDetect)
+  let modelTexture = loadTexture("resources/images/all_probes/stpeters_cross.png")
   let faces = [
     "resources/images/all_probes/stpeters_cross/stpeters_right.png",
     "resources/images/all_probes/stpeters_cross/stpeters_left.png",
@@ -167,9 +165,6 @@ proc main() =
     "resources/images/all_probes/stpeters_cross/stpeters_back.png"
   ]
   var cubemap = initCubemap(faces)
-  var cubemapShader = setupCubemapShader()
-  var shader = cubemapShader.shader
-  
 
   # Debugging output
   if model.meshCount == 0:
@@ -181,8 +176,8 @@ proc main() =
 
   # THIS FOULS STUFF UP.  DON'T DO IT!
   # model.materials[0].shader = shader
-  model.materials[0].maps[MaterialMapIndex.Cubemap].texture = hdrTexture
-  model2.materials[0].maps[MaterialMapIndex.Cubemap].texture = hdrTexture
+  model.materials[0].maps[MaterialMapIndex.Albedo].texture = modelTexture
+  model2.materials[0].maps[MaterialMapIndex.Albedo].texture = modelTexture
 
   let img = genImageChecked(64, 64, 32, 32, DarkBrown, DarkGray)
   let backgroundTexture = loadTextureFromImage(img)
@@ -195,8 +190,13 @@ proc main() =
     projection : Perspective
   )
 
-  let chromaticDispertionLoc = getShaderLocation(shader, "chromaticDispertion")
+  let cubemapLoc = getShaderLocation(shader, "cubemap")
+  #let textureLoc = getShaderLocation(shader, "textureSampler")
+  #let viewPosLoc = getShaderLocation(shader, "viewPos")
+  #let reflectStrengthLoc = getShaderLocation(shader, "reflectStrength")
+  let timeLoc = getShaderLocation(shader, "time")
 
+  let chromaticDispertionLoc = getShaderLocation(shader, "chromaticDispertion")
   let biasLoc = getShaderLocation(shader, "bias")
   let scaleLoc = getShaderLocation(shader, "scale")
   let powerLoc = getShaderLocation(shader, "power")
@@ -206,19 +206,24 @@ proc main() =
   let dLoc = getShaderLocation(shader, "d")
   let tdeltaLoc = getShaderLocation(shader, "tdelta")
   let pdeltaLoc = getShaderLocation(shader, "pdelta")
-  # let texCoordLoc = getShaderLocation(shader, "t")
+  # let texCoordLoc = getShaderLocation(shader, "vertexTexCoord")
 
-  echo chromaticDispertionLoc.int32
-  echo biasLoc.int32
-  echo scaleLoc.int32
-  echo powerLoc.int32
-  echo aLoc.int32
-  echo bLoc.int32
-  echo cLoc.int32
-  echo dLoc.int32
-  echo tdeltaLoc.int32
-  echo pdeltaLoc.int32
-  # echo texCoordLoc.int32
+  echo "cubemap ", cubemapLoc.int32
+  #echo "texture ", textureLoc.int32
+  #echo "viewPos ", viewPosLoc.int32
+  #echo "reflectStrength ", reflectStrengthLoc.int32
+  echo "time ", timeLoc.int32
+  echo "chromaticDispertion ", chromaticDispertionLoc.int32
+  echo "bias ", biasLoc.int32
+  echo "scale ", scaleLoc.int32
+  echo "power ", powerLoc.int32
+  echo "a ", aLoc.int32
+  echo "b ", bLoc.int32
+  echo "c ", cLoc.int32
+  echo "d ", dLoc.int32
+  echo "tdelta ", tdeltaLoc.int32
+  echo "pdelta ", pdeltaLoc.int32
+  # echo "texCoord", texCoordLoc.int32
 
   let chromaticDispertion = Vector3(x:0.98, y:1, z:1.033)
   let bias: float32 = 0.5
@@ -233,22 +238,25 @@ proc main() =
 
   let screenSize = [getScreenWidth().float32, getScreenHeight().float32]
   setShaderValue(shader, getShaderLocation(shader, "size"), screenSize)
-  setShaderValue(shader, chromaticDispertionLoc, chromaticDispertion)
-  setShaderValue(shader, biasLoc, bias.float32)
-  setShaderValue(shader, scaleLoc, scale.float32)
-  setShaderValue(shader, powerLoc, power.float32)
-  setShaderValue(shader, aLoc, a.float32)
-  setShaderValue(shader, bLoc, b.float32)
-  setShaderValue(shader, cLoc, c.float32)
-  setShaderValue(shader, dLoc, d.float32)
-  setShaderValue(shader, tdeltaLoc, tdelta.float32)
-  setShaderValue(shader, pdeltaLoc, pdelta.float32)
-  # setShaderValueTexture(shader, cubemapShader.texCoordLoc, hdrTexture)
-  setShaderValueTexture(shader, cubemapShader.cubemapLoc, cubemap)
+  # setShaderValueTexture(shader, texCoordLoc, texture)
+  setShaderValueTexture(shader, cubemapLoc, cubemap)
 
   setTargetFPS(60) # Set our game to run at 60 frames-per-second
   var frame = 0
   while not windowShouldClose(): # Detect window close button or ESC key
+    let time = getTime().float32
+    setShaderValue(shader, timeLoc, time)
+    setShaderValue(shader, chromaticDispertionLoc, chromaticDispertion)
+    setShaderValue(shader, biasLoc, bias.float32)
+    setShaderValue(shader, scaleLoc, scale.float32)
+    setShaderValue(shader, powerLoc, power.float32)
+    setShaderValue(shader, aLoc, a.float32)
+    setShaderValue(shader, bLoc, b.float32)
+    setShaderValue(shader, cLoc, c.float32)
+    setShaderValue(shader, dLoc, d.float32)
+    setShaderValue(shader, tdeltaLoc, tdelta.float32)
+    setShaderValue(shader, pdeltaLoc, pdelta.float32)
+
     let rotationAngles = Vector3(x:0.0, y:frame.float32, z:0.0) # Rotate around Y-axis
     frame = frame + 1
     beginDrawing()
@@ -262,11 +270,10 @@ proc main() =
     beginShaderMode(shader)
     #drawSphereWires(Vector3(x:0, y:0, z:0), 3.0f, 64, 64, Red)
 
-    drawModelWires(model, Vector3(x:0, y:0, z:0), 0.5f, Blue) 
+    drawModel(model, Vector3(x:0, y:0, z:0), 0.5f, White) 
     drawMesh(mesh, model.materials[0], rotateXYZ(rotationAngles))
-
-    drawModelWires(model2, Vector3(x:0, y:0, z:0), 0.5f, Blue) 
-    drawMesh(mesh2, model2.materials[0], rotateXYZ(rotationAngles))
+    #drawModel(model2, Vector3(x:0, y:0, z:0), 0.5f, White) 
+    #drawMesh(mesh2, model2.materials[0], rotateXYZ(rotationAngles))
 
     endShaderMode()
     endMode3D()
