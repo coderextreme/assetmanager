@@ -171,7 +171,12 @@ proc main() =
   if shader.id == 0:
     echo "Failed to load shader"
 
-  # THIS FOULS STUFF UP.  DON'T DO IT!
+  var myMaterial = loadMaterialDefault()
+  var myMesh = move(model.meshes[0])
+  myMaterial.maps[MaterialMapIndex.Albedo].texture = modelTexture
+  myMaterial.maps[MaterialMapIndex.Albedo].color = Orange;
+  # This doesn't work!
+  # myMaterial.shader = shader
   # model.materials[0].shader = shader
   model.materials[0].maps[MaterialMapIndex.Albedo].texture = modelTexture
   model2.materials[0].maps[MaterialMapIndex.Albedo].texture = modelTexture
@@ -198,7 +203,6 @@ proc main() =
   let dLoc = getShaderLocation(shader, "d")
   let tdeltaLoc = getShaderLocation(shader, "tdelta")
   let pdeltaLoc = getShaderLocation(shader, "pdelta")
-  # let texCoordLoc = getShaderLocation(shader, "vertexTexCoord")
 
   echo "cubemap ", cubemapLoc.int32
   echo "chromaticDispertion ", chromaticDispertionLoc.int32
@@ -211,7 +215,6 @@ proc main() =
   echo "d ", dLoc.int32
   echo "tdelta ", tdeltaLoc.int32
   echo "pdelta ", pdeltaLoc.int32
-  # echo "texCoord", texCoordLoc.int32
 
   let chromaticDispertion = Vector3(x:0.98, y:1, z:1.033)
   let bias: float32 = 0.5
@@ -226,7 +229,6 @@ proc main() =
 
   let screenSize = [getScreenWidth().float32, getScreenHeight().float32]
   setShaderValue(shader, getShaderLocation(shader, "size"), screenSize)
-  # setShaderValueTexture(shader, texCoordLoc, texture)
   setShaderValueTexture(shader, cubemapLoc, cubemap)
 
   setTargetFPS(60) # Set our game to run at 60 frames-per-second
@@ -243,10 +245,10 @@ proc main() =
     setShaderValue(shader, tdeltaLoc, tdelta.float32)
     setShaderValue(shader, pdeltaLoc, pdelta.float32)
 
-    let rotationAngles = Vector3(x:0.0, y:frame.float32, z:0.0) # Rotate around Y-axis
+    let rotationAngles = Vector3(x:0.0, y:0.0, z:0.0) # Rotate around Y-axis
     frame = frame + 1
     beginDrawing()
-    clearBackground(Pink)
+    clearBackground(White)
     #drawTexture(backgroundTexture,
     #  Rectangle(x: 0, y: 0, width: getScreenWidth().float32, height: getScreenHeight().float32),
     #  Vector2.zero, White)
@@ -254,18 +256,15 @@ proc main() =
     beginMode3D(camera)
     updateCamera(camera, Free)
     beginShaderMode(shader)
-    #drawSphereWires(Vector3(x:0, y:0, z:0), 3.0f, 64, 64, Red)
+    # drawSphereWires(Vector3(x:0, y:0, z:0), 3.0f, 64, 64, Green)
+    drawSphere(Vector3(x:0, y:0, z:0), 3.0f, 64, 64, Green)
 
-    drawModel(model, Vector3(x:0, y:0, z:0), 0.5f, White)
-    #drawFPS(10, 10)
-    #drawMesh(mesh, model.materials[0], rotateXYZ(rotationAngles))
-    #drawFPS(10, 10)
+    # drawModel(model, Vector3(x:0, y:0, z:0), 0.5f, White)
+    # drawMesh(mesh, model.materials[0], rotateXYZ(rotationAngles))
+    drawMesh(myMesh, myMaterial, rotateXYZ(rotationAngles))
     #drawModel(model2, Vector3(x:0, y:0, z:0), 0.5f, White)
-    #drawFPS(10, 10)
     #drawMesh(mesh2, model2.materials[0], rotateXYZ(rotationAngles))
-    #drawFPS(10, 10)
-    drawGrid(100, 1.0)
-    drawFPS(10, 10)
+    #drawGrid(100, 1.0)
 
     endShaderMode()
     endMode3D()
