@@ -29,7 +29,6 @@ uniform float c;
 uniform float d;
 uniform float tdelta;
 uniform float pdelta;
-// uniform float time;
 
 out vec3 t;
 out vec3 tr;
@@ -89,11 +88,7 @@ void main()
                 matView[2].z
     );
     vec3 position = vertexPosition;
-    // position.x += sin(time + position.x) * 0.5;
-    // position.y += sin(time + position.x) * 0.5;
-    // position.z += sin(time + position.x) * 0.5;
     gl_Position = mvp * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0);
-    // gl_Position = mvp * vec4(position, 1.0);
     vec3 fragNormal = mvm3*rose_normal(position, a, b, c, d, tdelta, pdelta);
 
     vec3 incident = normalize((matView * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
@@ -193,11 +188,6 @@ proc main() =
   )
 
   let cubemapLoc = getShaderLocation(shader, "cubemap")
-  #let textureLoc = getShaderLocation(shader, "textureSampler")
-  #let viewPosLoc = getShaderLocation(shader, "view")
-  #let reflectStrengthLoc = getShaderLocation(shader, "reflectStrength")
-  #let timeLoc = getShaderLocation(shader, "time")
-
   let chromaticDispertionLoc = getShaderLocation(shader, "chromaticDispertion")
   let biasLoc = getShaderLocation(shader, "bias")
   let scaleLoc = getShaderLocation(shader, "scale")
@@ -211,10 +201,6 @@ proc main() =
   # let texCoordLoc = getShaderLocation(shader, "vertexTexCoord")
 
   echo "cubemap ", cubemapLoc.int32
-  #echo "texture ", textureLoc.int32
-  #echo "viewPos ", viewPosLoc.int32
-  #echo "reflectStrength ", reflectStrengthLoc.int32
-  #echo "time ", timeLoc.int32
   echo "chromaticDispertion ", chromaticDispertionLoc.int32
   echo "bias ", biasLoc.int32
   echo "scale ", scaleLoc.int32
@@ -246,8 +232,6 @@ proc main() =
   setTargetFPS(60) # Set our game to run at 60 frames-per-second
   var frame = 0
   while not windowShouldClose(): # Detect window close button or ESC key
-    #let time = getTime().float32
-    #setShaderValue(shader, timeLoc, time)
     setShaderValue(shader, chromaticDispertionLoc, chromaticDispertion)
     setShaderValue(shader, biasLoc, bias.float32)
     setShaderValue(shader, scaleLoc, scale.float32)
