@@ -3,8 +3,8 @@
 import raylib, raymath, rlgl
 
 const
-  screenWidth = 800
-  screenHeight = 450
+  screenWidth = 960
+  screenHeight = 540
   vertexShader =
     """
 #version 330 core
@@ -29,7 +29,7 @@ uniform float c;
 uniform float d;
 uniform float tdelta;
 uniform float pdelta;
-uniform float time;
+// uniform float time;
 
 out vec3 t;
 out vec3 tr;
@@ -43,7 +43,7 @@ vec3 cart2sphere(vec3 p) {
      float phi = atan(p.y, p.x);
      return vec3(r, theta, phi);
 }
-     
+
 vec3 rose(vec3 p, float a, float b, float c, float d, float tdelta, float pdelta) {
      float rho = a + b * cos(c * p.y + tdelta) * cos(d * p.z + pdelta);
      float x = rho * cos(p.z) * cos(p.y);
@@ -89,9 +89,11 @@ void main()
                 view[2].z
     );
     vec3 position = vertexPosition;
-    position.y += sin(time + position.x) * 0.5;
-    // gl_Position = mvp * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0);
-    gl_Position = mvp * vec4(position, 1.0);
+    // position.x += sin(time + position.x) * 0.5;
+    // position.y += sin(time + position.x) * 0.5;
+    // position.z += sin(time + position.x) * 0.5;
+    gl_Position = mvp * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0);
+    // gl_Position = mvp * vec4(position, 1.0);
     vec3 fragNormal = mvm3*rose_normal(position, a, b, c, d, tdelta, pdelta);
 
     vec3 incident = normalize((view * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
@@ -183,7 +185,7 @@ proc main() =
   let backgroundTexture = loadTextureFromImage(img)
 
   var camera = Camera(
-    position : Vector3( x:0.0f, y:0.0f, z:10.0f ),
+    position : Vector3( x:0.0f, y:0.0f, z:15.0f ),
     target :   Vector3( x:0.0f, y:0.0f, z:0.0f ),
     up :       Vector3( x:0.0f, y:1.0f, z:0.0f ),
     fovy : 45.0f,
@@ -194,7 +196,7 @@ proc main() =
   #let textureLoc = getShaderLocation(shader, "textureSampler")
   #let viewPosLoc = getShaderLocation(shader, "viewPos")
   #let reflectStrengthLoc = getShaderLocation(shader, "reflectStrength")
-  let timeLoc = getShaderLocation(shader, "time")
+  #let timeLoc = getShaderLocation(shader, "time")
 
   let chromaticDispertionLoc = getShaderLocation(shader, "chromaticDispertion")
   let biasLoc = getShaderLocation(shader, "bias")
@@ -212,7 +214,7 @@ proc main() =
   #echo "texture ", textureLoc.int32
   #echo "viewPos ", viewPosLoc.int32
   #echo "reflectStrength ", reflectStrengthLoc.int32
-  echo "time ", timeLoc.int32
+  #echo "time ", timeLoc.int32
   echo "chromaticDispertion ", chromaticDispertionLoc.int32
   echo "bias ", biasLoc.int32
   echo "scale ", scaleLoc.int32
@@ -244,8 +246,8 @@ proc main() =
   setTargetFPS(60) # Set our game to run at 60 frames-per-second
   var frame = 0
   while not windowShouldClose(): # Detect window close button or ESC key
-    let time = getTime().float32
-    setShaderValue(shader, timeLoc, time)
+    #let time = getTime().float32
+    #setShaderValue(shader, timeLoc, time)
     setShaderValue(shader, chromaticDispertionLoc, chromaticDispertion)
     setShaderValue(shader, biasLoc, bias.float32)
     setShaderValue(shader, scaleLoc, scale.float32)
@@ -260,20 +262,26 @@ proc main() =
     let rotationAngles = Vector3(x:0.0, y:frame.float32, z:0.0) # Rotate around Y-axis
     frame = frame + 1
     beginDrawing()
-    clearBackground(Black)
-    drawTexture(backgroundTexture,
-      Rectangle(x: 0, y: 0, width: getScreenWidth().float32, height: getScreenHeight().float32),
-      Vector2.zero, White)
+    clearBackground(Pink)
+    #drawTexture(backgroundTexture,
+    #  Rectangle(x: 0, y: 0, width: getScreenWidth().float32, height: getScreenHeight().float32),
+    #  Vector2.zero, White)
 
     beginMode3D(camera)
-    updateCamera(camera, Orbital)
+    updateCamera(camera, Free)
     beginShaderMode(shader)
     #drawSphereWires(Vector3(x:0, y:0, z:0), 3.0f, 64, 64, Red)
 
-    drawModel(model, Vector3(x:0, y:0, z:0), 0.5f, White) 
-    drawMesh(mesh, model.materials[0], rotateXYZ(rotationAngles))
-    #drawModel(model2, Vector3(x:0, y:0, z:0), 0.5f, White) 
+    drawModel(model, Vector3(x:0, y:0, z:0), 0.5f, White)
+    #drawFPS(10, 10)
+    #drawMesh(mesh, model.materials[0], rotateXYZ(rotationAngles))
+    #drawFPS(10, 10)
+    #drawModel(model2, Vector3(x:0, y:0, z:0), 0.5f, White)
+    #drawFPS(10, 10)
     #drawMesh(mesh2, model2.materials[0], rotateXYZ(rotationAngles))
+    #drawFPS(10, 10)
+    drawGrid(100, 1.0)
+    drawFPS(10, 10)
 
     endShaderMode()
     endMode3D()
