@@ -9,7 +9,7 @@ const
     """
 #version 330 core
 uniform mat4 mvp;
-in mat4 view;
+uniform mat4 matView;
 
 in vec3 vertexPosition;
 in vec2 vertexTexCoord;
@@ -78,15 +78,15 @@ void main()
     rfac = 0.5;
     */
     mat3 mvm3=mat3(
-                view[0].x,
-                view[0].y,
-                view[0].z,
-                view[1].x,
-                view[1].y,
-                view[1].z,
-                view[2].x,
-                view[2].y,
-                view[2].z
+                matView[0].x,
+                matView[0].y,
+                matView[0].z,
+                matView[1].x,
+                matView[1].y,
+                matView[1].z,
+                matView[2].x,
+                matView[2].y,
+                matView[2].z
     );
     vec3 position = vertexPosition;
     // position.x += sin(time + position.x) * 0.5;
@@ -96,7 +96,7 @@ void main()
     // gl_Position = mvp * vec4(position, 1.0);
     vec3 fragNormal = mvm3*rose_normal(position, a, b, c, d, tdelta, pdelta);
 
-    vec3 incident = normalize((view * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
+    vec3 incident = normalize((matView * vec4(rose(cart2sphere(position), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
 
     t = reflect(incident, fragNormal)*mvm3;
     tr = refract(incident, fragNormal, chromaticDispertion.x)*mvm3;
@@ -194,7 +194,7 @@ proc main() =
 
   let cubemapLoc = getShaderLocation(shader, "cubemap")
   #let textureLoc = getShaderLocation(shader, "textureSampler")
-  #let viewPosLoc = getShaderLocation(shader, "viewPos")
+  #let viewPosLoc = getShaderLocation(shader, "view")
   #let reflectStrengthLoc = getShaderLocation(shader, "reflectStrength")
   #let timeLoc = getShaderLocation(shader, "time")
 
