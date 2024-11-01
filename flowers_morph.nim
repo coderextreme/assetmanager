@@ -130,7 +130,6 @@ uniform vec3 lightPos;
 out vec4 finalColor;
 
 void main() {
-    /*
     vec4 texelColor = texture(texture0, fragTexCoord);
     vec3 light = normalize(lightPos);
     vec3 normal = normalize(fragNormal);
@@ -144,10 +143,12 @@ void main() {
     ret.b = textureCube(cubemap, tb).b;
     vec4 rrColor = ret * rfac + ref * (1.0 - rfac);
     finalColor = vec4(rrColor * (diff * 0.8 + 0.2));
+    /*
     */
     /*
     finalColor = vec4(1.0, 0.0, 0.0, 1.0);
     */
+    /*
         vec4 texelColor = texture(texture0, fragTexCoord);
 	vec3 normal = normalize(fragNormal);
 	vec3 light = normalize(lightPos);
@@ -160,6 +161,7 @@ void main() {
 	color.r *= abs(sin(time));
 	color.g *= abs(cos(time * 0.5));
 	finalColor = vec4(color * (diff * 0.8 + 0.2), texelColor.a);
+    */
 }
 """
 
@@ -176,13 +178,22 @@ proc main() =
   # --------------------------------------------------------------------------------------
   initWindow(screenWidth, screenHeight, "JSONverse shaders example - rhodonea")
   defer: closeWindow()
+  var cubeMesh = genMeshCube(60.0f, 60.0f, 60.0f)
+  var cubeModel = loadModelFromMesh(move(cubeMesh))
+  var cubeModelTexture = loadTexture("resources/images/all_probes/stpeters_cross.png")
+
   var mesh = genMeshSphere(4, 64, 64)
   var model = loadModelFromMesh(move(mesh))
   var shader = loadShaderFromMemory(vertexShader, fragmentShader)
   var modelImage = loadImage("resources/images/all_probes/stpeters_cross/stpeters_right.png")
-  var modelTexture = loadTextureFromImage(modelImage)
+  #var modelTexture = loadTextureFromImage(modelImage)
   # Cubemap
-  # var modelTexture = loadTexture("resources/images/all_probes/stpeters_cross.png")
+  # var cubemap = loadTexture("resources/images/all_probes/stpeters_cross.png")
+
+  var modelTexture = loadTexture("resources/images/all_probes/stpeters_cross.png")  # Replace with your texture path
+  var image = loadImage("resources/images/all_probes/stpeters_cross.png")  # Replace with your texture path
+  var cubemap = loadTextureCubemap(image, CrossThreeByFour)
+
 
   var faces = [
     "resources/images/all_probes/stpeters_cross/stpeters_right.png",
@@ -192,7 +203,7 @@ proc main() =
     "resources/images/all_probes/stpeters_cross/stpeters_front.png",
     "resources/images/all_probes/stpeters_cross/stpeters_back.png"
   ]
-  var cubemap = initCubemap(faces)
+  # var cubemap = initCubemap(faces)
 
   # Debugging output
   if model.meshCount == 0:
@@ -204,7 +215,8 @@ proc main() =
   #model.materials[0].maps[MaterialMapIndex.Albedo].color = Orange
   #model.materials[0].maps[MaterialMapIndex.Emission].color = Orange
   model.materials[0].maps[MaterialMapIndex.Albedo].texture = modelTexture
-  # model.materials[0].maps[MaterialMapIndex.Cubemap].texture = cubemap
+  cubeModel.materials[0].maps[MaterialMapIndex.Albedo].texture = cubeModelTexture
+  model.materials[0].maps[MaterialMapIndex.Cubemap].texture = cubemap
 
   var img = genImageChecked(64, 64, 32, 32, DarkBrown, DarkGray)
   var backgroundTexture = loadTextureFromImage(img)
@@ -318,6 +330,7 @@ proc main() =
     #drawModelWires(model, Vector3(x:0, y:0, z:0), 0.5f, Blue)
     drawModel(model, Vector3(x:0, y:0, z:0), 0.5f, White)
     endShaderMode()
+    drawModel(cubeModel, Vector3(x:0, y:0, z:0), 0.5f, White)
     endMode3D()
     a += rand(1.0) - 0.5f
     if a > 5:
