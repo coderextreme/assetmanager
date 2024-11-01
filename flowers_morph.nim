@@ -19,23 +19,28 @@ out vec2 fragTexCoord;
 out vec4 fragColor;
 out vec3 fragNormal;
 
+/*
 uniform mat4 view;
 uniform vec3 chromaticDispersion;
 uniform float bias;
 uniform float scale;
 uniform float power;
+*/
 uniform float a;
 uniform float b;
 uniform float c;
 uniform float d;
 uniform float tdelta;
 uniform float pdelta;
+uniform float time;
 
+/*
 out vec3 t;
 out vec3 tr;
 out vec3 tg;
 out vec3 tb;
 out float rfac;
+*/
 
 vec3 cart2sphere(vec3 p) {
      float r = pow(p.x*p.x + p.y*p.y + p.z*p.z, 0.5);
@@ -70,6 +75,7 @@ vec3 rose_normal(vec3 p, float a, float b, float c, float d, float tdelta, float
 
 void main()
 {
+    /*
     mat3 mvm3=mat3(
                 view[0].x,
                 view[0].y,
@@ -81,7 +87,9 @@ void main()
                 view[2].y,
                 view[2].z
     );
+    */
     gl_Position = mvp * vec4(rose(cart2sphere(vertexPosition), a, b, c, d, tdelta, pdelta), 1.0);
+    /*
 
     fragNormal = mvm3*rose_normal(vertexPosition, a, b, c, d, tdelta, pdelta);
     vec3 incident = normalize((view * vec4(rose(cart2sphere(vertexPosition), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
@@ -91,10 +99,20 @@ void main()
     tg = refract(incident, fragNormal, chromaticDispersion.y)*mvm3;
     tb = refract(incident, fragNormal, chromaticDispersion.z)*mvm3;
     rfac = bias + scale * pow(0.5+0.5*dot(incident, fragNormal), power);
-
+    */
     fragNormal = vertexNormal;
     fragTexCoord = vertexTexCoord;
     fragColor = vertexColor;
+
+    // Add some vertex animation based on time
+    vec3 position = vertexPosition;
+    position.y += sin(time * 2.0 + position.x) * 0.5;
+    
+    fragTexCoord = vertexTexCoord;
+    fragNormal = vertexNormal;
+    /*
+    gl_Position = mvp * vec4(position, 1.0);
+    */
 }
 
 """
@@ -102,23 +120,24 @@ void main()
 #version 330 core
 #extension GL_NV_shadow_samplers_cube : enable
 
-in vec3 t;
-in vec3 tr;
-in vec3 tg;
-in vec3 tb;
-in float rfac;
-uniform samplerCube cubemap;
+//in vec3 t;
+//in vec3 tr;
+//in vec3 tg;
+//in vec3 tb;
+//in float rfac;
+// uniform samplerCube cubemap;
 
 in vec2 fragTexCoord;
 in vec3 fragNormal;
 in vec4 fragColor;
-// uniform sampler2D texture0;
-// uniform float time;
+uniform sampler2D texture0;
+uniform float time;
 uniform vec3 lightPos;
 
 out vec4 finalColor;
 
 void main() {
+    /*
     vec4 ref = textureCube(cubemap, t);
     vec4 ret = vec4(1.0);
 
@@ -126,6 +145,21 @@ void main() {
     ret.g = textureCube(cubemap, tg).g;
     ret.b = textureCube(cubemap, tb).b;
     finalColor = ret * rfac + ref * (1.0 - rfac);
+    finalColor = vec4(1.0, 0.0, 0.0, 1.0);
+    */
+        vec4 texelColor = texture(texture0, fragTexCoord);
+	vec3 normal = normalize(fragNormal);
+	vec3 light = normalize(lightPos);
+
+	// Basic lighting 
+	float diff = max(dot(normal, light), 0.0);
+
+	// Add time-based color shifting
+	vec3 color = texelColor.rgb;
+	color.r *= abs(sin(time));
+	color.g *= abs(cos(time * 0.5));
+	finalColor = vec4(color * (diff * 0.8 + 0.2), texelColor.a);
+
 }
 """
 
@@ -168,8 +202,9 @@ proc main() =
 
   model.materials[0].shader = shader
   model.materials[0].maps[MaterialMapIndex.Albedo].color = Orange
+  #model.materials[0].maps[MaterialMapIndex.Emission].color = Orange
   model.materials[0].maps[MaterialMapIndex.Albedo].texture = modelTexture
-  model.materials[0].maps[MaterialMapIndex.Cubemap].texture = cubemap
+  #model.materials[0].maps[MaterialMapIndex.Cubemap].texture = cubemap
 
   var img = genImageChecked(64, 64, 32, 32, DarkBrown, DarkGray)
   var backgroundTexture = loadTextureFromImage(img)
@@ -190,49 +225,49 @@ proc main() =
   #  projection: Perspective
   #)
 
-  var cubemapLoc = getShaderLocation(shader, "cubemap")
-  var chromaticDispersionLoc = getShaderLocation(shader, "chromaticDispersion")
-  var biasLoc = getShaderLocation(shader, "bias")
-  var scaleLoc = getShaderLocation(shader, "scale")
-  var powerLoc = getShaderLocation(shader, "power")
+  # var cubemapLoc = getShaderLocation(shader, "cubemap")
+  #var chromaticDispersionLoc = getShaderLocation(shader, "chromaticDispersion")
+  #var biasLoc = getShaderLocation(shader, "bias")
+  #var scaleLoc = getShaderLocation(shader, "scale")
+  #var powerLoc = getShaderLocation(shader, "power")
   var aLoc = getShaderLocation(shader, "a")
   var bLoc = getShaderLocation(shader, "b")
   var cLoc = getShaderLocation(shader, "c")
   var dLoc = getShaderLocation(shader, "d")
   var tdeltaLoc = getShaderLocation(shader, "tdelta")
   var pdeltaLoc = getShaderLocation(shader, "pdelta")
-  # var timeLoc = getShaderLocation(shader, "time")
+  var timeLoc = getShaderLocation(shader, "time")
   var lightPosLoc = getShaderLocation(shader, "lightPos")
-  var viewLoc = getShaderLocation(shader, "view")
+  # var viewLoc = getShaderLocation(shader, "view")
 
-  echo "cubemap ", cubemapLoc.int32
-  echo "chromaticDispersion ", chromaticDispersionLoc.int32
-  echo "bias ", biasLoc.int32
-  echo "scale ", scaleLoc.int32
-  echo "power ", powerLoc.int32
+  #echo "cubemap ", cubemapLoc.int32
+  #echo "chromaticDispersion ", chromaticDispersionLoc.int32
+  #echo "bias ", biasLoc.int32
+  #echo "scale ", scaleLoc.int32
+  #echo "power ", powerLoc.int32
   echo "a ", aLoc.int32
   echo "b ", bLoc.int32
   echo "c ", cLoc.int32
   echo "d ", dLoc.int32
   echo "tdelta ", tdeltaLoc.int32
   echo "pdelta ", pdeltaLoc.int32
-  # echo "time ", timeLoc.int32
+  echo "time ", timeLoc.int32
   echo "lightPos ",lightPosLoc.int32
-  echo "view ", viewLoc.int32
+  # echo "view ", viewLoc.int32
 
-  var chromaticDispersion = Vector3(x:0.98, y:1, z:1.033)
-  var bias: float32 = 0.5
-  var scale: float32 = 0.5
-  var power: float32 = 2.0
+  #var chromaticDispersion = Vector3(x:0.98, y:1, z:1.033)
+  #var bias: float32 = 0.5
+  #var scale: float32 = 0.5
+  #var power: float32 = 2.0
   var a: float32 = 20
   var b: float32 = 10
   var c: float32 = 4
   var d: float32 = 4
   var tdelta: float32 = 0
   var pdelta: float32 = 0
-  # var time: float32 = 0.0
+  var time: float32 = 0.0
   var lightPos = Vector3(x: 10.0, y: 10.0, z: 10.0)
-  var viewMatrix = getCameraMatrix(camera)
+  # var viewMatrix = getCameraMatrix(camera)
 
   var normalColor = Red
   var shaderColor = Vector4(
@@ -244,24 +279,25 @@ proc main() =
 
   var screenSize = [getScreenWidth().float32, getScreenHeight().float32]
   setShaderValue(shader, getShaderLocation(shader, "size"), screenSize)
-  setShaderValueTexture(shader, cubemapLoc, cubemap)
+  #setShaderValueTexture(shader, cubemapLoc, cubemap)
 
   setTargetFPS(60) # Set our game to run at 60 frames-per-second
   var frame = 0
   while not windowShouldClose(): # Detect window close button or ESC key
-    setShaderValue(shader, chromaticDispersionLoc, chromaticDispersion)
-    setShaderValue(shader, biasLoc, bias.float32)
-    setShaderValue(shader, scaleLoc, scale.float32)
-    setShaderValue(shader, powerLoc, power.float32)
+    time += getFrameTime()
+    #setShaderValue(shader, chromaticDispersionLoc, chromaticDispersion)
+    #setShaderValue(shader, biasLoc, bias.float32)
+    #setShaderValue(shader, scaleLoc, scale.float32)
+    #setShaderValue(shader, powerLoc, power.float32)
     setShaderValue(shader, aLoc, a.float32)
     setShaderValue(shader, bLoc, b.float32)
     setShaderValue(shader, cLoc, c.float32)
     setShaderValue(shader, dLoc, d.float32)
     setShaderValue(shader, tdeltaLoc, tdelta.float32)
     setShaderValue(shader, pdeltaLoc, pdelta.float32)
-    # setShaderValue(shader, timeLoc, time)
+    setShaderValue(shader, timeLoc, time)
     setShaderValue(shader, lightPosLoc, lightPos)
-    setShaderValueMatrix(shader, viewLoc, viewMatrix)
+    #setShaderValueMatrix(shader, viewLoc, viewMatrix)
 
     var rotationAngles = Vector3(x:0.0, y:0.0, z:0.0) # Rotate around Y-axis
     frame = frame + 1
