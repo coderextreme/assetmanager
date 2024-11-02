@@ -1,6 +1,6 @@
 #   Copyright (c) 2024 by John Carlson
 
-import raylib, raymath, rlgl, random
+import raylib, raymath, rlgl, random, math
 
 const
   screenWidth = 960
@@ -181,7 +181,8 @@ proc main() =
   var cubeModelTexture = loadTexture("resources/images/all_probes/stpeters_cross.png")
 
   var mesh = genMeshSphere(4, 64, 64)
-  var model = loadModelFromMesh(move(mesh))
+  # var model = loadModelFromMesh(move(mesh))
+  var model = loadModel("resources/sphere.obj")
   var shader = loadShaderFromMemory(vertexShader, fragmentShader)
   var modelImage = loadImage("resources/images/all_probes/stpeters_cross/stpeters_right.png")
   var modelTexture = loadTextureFromImage(modelImage)
@@ -341,12 +342,12 @@ proc main() =
       b = 5
     if b < -5:
       b = -5
-    c += rand(1.0) - 0.5f
+    c += trunc((rand(10) - 5).float32)
     if c > 5:
       c = 5
     if c < -5:
       c = -5
-    d += rand(1.0) - 0.5f
+    d += trunc((rand(10) - 5).float32)
     if d > 5:
       d = 5
     if d < -5:
