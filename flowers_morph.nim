@@ -180,7 +180,7 @@ proc main() =
   # --------------------------------------------------------------------------------------
   initWindow(screenWidth, screenHeight, "JSONverse shaders example - rhodonea")
   defer: closeWindow()
-  var cube = genMeshCube(1.0f, 1.0f, 1.0f)
+  var cube = genMeshCube(4.0f, 4.0f, 4.0f)
   var skybox = loadModelFromMesh(cube)
 
   var sphere = genMeshSphere(4, 64, 64)
@@ -193,6 +193,7 @@ proc main() =
   skybox.materials[0].shader = skyboxShader
 
   var image = loadImage("resources/images/all_probes/stpeters_cross.png")  # Replace with your texture path
+  imageFlipHorizontal(image)
   var cubemap = loadTextureCubemap(image, CubemapLayout.AutoDetect);
 
   # Debugging output
