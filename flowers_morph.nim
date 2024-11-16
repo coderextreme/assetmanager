@@ -266,7 +266,7 @@ proc main() =
   setShaderValue(skyboxShader, cubemapSkyboxLoc, mapIndex)
   setShaderValue(modelShader, cubemapModelLoc, mapIndex)
 
-  setTargetFPS(6) # Set our game to run at 60 frames-per-second
+  setTargetFPS(10) # Set our game to run at 60 frames-per-second
   var frame = 0
   while not windowShouldClose(): # Detect window close button or ESC key
     # setShaderValueTexture(modelShader, cubemapLoc, cubemap)
