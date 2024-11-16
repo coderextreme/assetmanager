@@ -5,7 +5,48 @@ import raylib, raymath, rlgl, random, math
 const
   screenWidth = 960
   screenHeight = 540
-  vertexShader =
+  vertexSkyboxShader =
+    """
+#version 330 core
+uniform mat4 mvp;
+
+in vec3 vertexPosition;
+in vec2 vertexTexCoord;
+in vec3 vertexNormal;
+in vec4 vertexColor;
+
+out vec2 fragTexCoord;
+out vec4 fragColor;
+out vec3 fragNormal;
+out vec3 fragPosition;
+
+uniform mat4 view;
+
+void main()
+{
+    gl_Position = mvp * vec4(vertexPosition, 1.0);
+    fragNormal = vertexNormal;
+    fragTexCoord = vertexTexCoord;
+    fragColor = vertexColor;
+    fragPosition = vertexPosition;
+}
+"""
+  fragmentSkyboxShader = """
+#version 330 core
+#extension GL_NV_shadow_samplers_cube : enable
+
+in vec3 fragPosition;
+uniform samplerCube environmentMap;
+out vec4 finalColor;
+
+void main() {
+    vec3 color = vec3(0.0);
+    color = texture(environmentMap, fragPosition).rgb;
+    finalColor = vec4(color, 1.0);
+}
+"""
+
+  vertexModelShader =
     """
 #version 330 core
 uniform mat4 mvp;
@@ -31,13 +72,13 @@ uniform float c;
 uniform float d;
 uniform float tdelta;
 uniform float pdelta;
-uniform float time;
 
 out vec3 t;
 out vec3 tr;
 out vec3 tg;
 out vec3 tb;
 out float rfac;
+out vec3 fragPosition;
 
 vec3 cart2sphere(vec3 p) {
      float r = pow(p.x*p.x + p.y*p.y + p.z*p.z, 0.5);
@@ -86,6 +127,10 @@ void main()
     gl_Position = mvp * vec4(rose(cart2sphere(vertexPosition), a, b, c, d, tdelta, pdelta), 1.0);
 
     fragNormal = mvm3*rose_normal(vertexPosition, a, b, c, d, tdelta, pdelta);
+    fragTexCoord = vertexTexCoord;
+    fragColor = vertexColor;
+    fragPosition = vertexPosition;
+
     vec3 incident = normalize((view * vec4(rose(cart2sphere(vertexPosition), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
 
     t = reflect(incident, fragNormal)*mvm3;
@@ -93,82 +138,41 @@ void main()
     tg = refract(incident, fragNormal, chromaticDispersion.y)*mvm3;
     tb = refract(incident, fragNormal, chromaticDispersion.z)*mvm3;
     rfac = bias + scale * pow(0.5+0.5*dot(incident, fragNormal), power);
-    // fragNormal = vertexNormal;
-    fragTexCoord = vertexTexCoord;
-    fragColor = vertexColor;
-
-    /*
-    // Add some vertex animation based on time
-    vec3 position = vertexPosition;
-    position.y += sin(time * 2.0 + position.x) * 0.5;
-    
-    fragTexCoord = vertexTexCoord;
-    fragNormal = vertexNormal;
-    gl_Position = mvp * vec4(position, 1.0);
-    */
 }
 
 """
-  fragmentShader = """
+  fragmentModelShader = """
 #version 330 core
 #extension GL_NV_shadow_samplers_cube : enable
 
+uniform samplerCube environmentMap;
+in vec3 fragPosition;
 in vec3 t;
 in vec3 tr;
 in vec3 tg;
 in vec3 tb;
 in float rfac;
-uniform samplerCube cubemap;
-
-in vec2 fragTexCoord;
-in vec3 fragNormal;
-in vec4 fragColor;
-uniform sampler2D texture0;
-uniform float time;
-uniform vec3 lightPos;
 
 out vec4 finalColor;
 
 void main() {
-    /*
-    vec4 texelColor = texture(texture0, fragTexCoord);
-    vec3 light = normalize(lightPos);
-    vec3 normal = normalize(fragNormal);
-    float diff = max(dot(normal, light), 0.0);
 
-    vec4 ref = textureCube(cubemap, t);
+    vec4 ref = textureCube(environmentMap, t);
     vec4 ret = vec4(1.0);
 
-    ret.r = textureCube(cubemap, tr).r;
-    ret.g = textureCube(cubemap, tg).g;
-    ret.b = textureCube(cubemap, tb).b;
-    vec4 rrColor = ret * rfac + ref * (1.0 - rfac);
-    finalColor = vec4(rrColor * (diff * 0.8 + 0.2));
-    */
-    /*
-    finalColor = vec4(1.0, 0.0, 0.0, 1.0);
-    */
-        vec4 texelColor = texture(texture0, fragTexCoord);
-	vec3 normal = normalize(fragNormal);
-	vec3 light = normalize(lightPos);
-
-	// Basic lighting 
-	float diff = max(dot(normal, light), 0.0);
-
-	// Add time-based color shifting
-	vec3 color = texelColor.rgb;
-	color.r *= abs(sin(time));
-	color.g *= abs(cos(time * 0.5));
-	finalColor = vec4(color * (diff * 0.8 + 0.2), texelColor.a);
+    ret.r = textureCube(environmentMap, tr).r;
+    ret.g = textureCube(environmentMap, tg).g;
+    ret.b = textureCube(environmentMap, tb).b;
+    finalColor = ret * rfac + ref * (1.0 - rfac);
 }
 """
 
-proc initCubemap(faces: array[6, string]): TextureCubemap =
-  var images: array[6, Image]
-  for i in 0..5:
-    images[i] = loadImage(faces[i])
-
-  result = loadTextureCubemap(images[0], CubemapLayout.CrossThreeByFour)
+#proc initCubemap(faces: array[6, string]): TextureCubemap =
+#  var images: array[6, Image]
+#  for i in 0..5:
+#    images[i] = loadImage(faces[i])
+#
+#  result = loadTextureCubemap(images[0], CubemapLayout.CrossThreeByFour)
 
 
 proc main() =
@@ -176,83 +180,60 @@ proc main() =
   # --------------------------------------------------------------------------------------
   initWindow(screenWidth, screenHeight, "JSONverse shaders example - rhodonea")
   defer: closeWindow()
-  var cubeMesh = genMeshCube(30.0f, 30.0f, 30.0f)
-  var cubeModel = loadModelFromMesh(move(cubeMesh))
-  var cubeModelTexture = loadTexture("resources/images/all_probes/stpeters_cross.png")
+  var cube = genMeshCube(1.0f, 1.0f, 1.0f)
+  var skybox = loadModelFromMesh(cube)
 
-  var mesh = genMeshSphere(4, 64, 64)
-  # var model = loadModelFromMesh(move(mesh))
-  var model = loadModel("resources/sphere.obj")
-  var shader = loadShaderFromMemory(vertexShader, fragmentShader)
-  var modelImage = loadImage("resources/images/all_probes/stpeters_cross/stpeters_right.png")
-  var modelTexture = loadTextureFromImage(modelImage)
-  # Cubemap
-  # var cubemap = loadTexture("resources/images/all_probes/stpeters_cross.png")
+  var sphere = genMeshSphere(4, 64, 64)
+  var model = loadModelFromMesh(sphere)
 
-  #var modelTexture = loadTexture("resources/images/all_probes/stpeters_cross.png")  # Replace with your texture path
+  var modelShader = loadShaderFromMemory(vertexModelShader, fragmentModelShader)
+  var skyboxShader = loadShaderFromMemory(vertexSkyboxShader, fragmentSkyboxShader)
+
+  model.materials[0].shader = modelShader
+  skybox.materials[0].shader = skyboxShader
+
   var image = loadImage("resources/images/all_probes/stpeters_cross.png")  # Replace with your texture path
-  # var cubemap = loadTextureCubemap(image, CrossThreeByFour)
-
-
-  var faces = [
-    "resources/images/all_probes/stpeters_cross/stpeters_right.png",
-    "resources/images/all_probes/stpeters_cross/stpeters_left.png",
-    "resources/images/all_probes/stpeters_cross/stpeters_top.png",
-    "resources/images/all_probes/stpeters_cross/stpeters_bottom.png",
-    "resources/images/all_probes/stpeters_cross/stpeters_front.png",
-    "resources/images/all_probes/stpeters_cross/stpeters_back.png"
-  ]
-  var cubemap = initCubemap(faces)
+  var cubemap = loadTextureCubemap(image, CubemapLayout.AutoDetect);
 
   # Debugging output
   if model.meshCount == 0:
     echo "Failed to load model"
-  if shader.id == 0:
-    echo "Failed to load shader"
+  if modelShader.id == 0:
+    echo "Failed to load modelShader"
+  if skyboxShader.id == 0:
+    echo "Failed to load skyboxShader"
 
-  model.materials[0].shader = shader
-  #model.materials[0].maps[MaterialMapIndex.Albedo].color = Orange
-  #model.materials[0].maps[MaterialMapIndex.Emission].color = Orange
-
-  cubeModel.materials[0].maps[MaterialMapIndex.Albedo].texture = cubeModelTexture
-  model.materials[0].maps[MaterialMapIndex.Albedo].texture = modelTexture
   model.materials[0].maps[MaterialMapIndex.Cubemap].texture = cubemap
+  skybox.materials[0].maps[MaterialMapIndex.Cubemap].texture = cubemap
 
   var img = genImageChecked(64, 64, 32, 32, DarkBrown, DarkGray)
   var backgroundTexture = loadTextureFromImage(img)
 
-  var camera = Camera3D(
-    position : Vector3( x:0.0f, y:0.0f, z:15.0f ),
-    target :   Vector3( x:0.0f, y:0.0f, z:0.0f ),
-    up :       Vector3( x:0.0f, y:1.0f, z:0.0f ),
-    fovy : 45.0f,
-    projection : Perspective
-  ) 
   # Define camera
-  #var camera = Camera3D(
-  #  position: Vector3(x: 0.0, y: 10.0, z: 10.0),
-  #  target: Vector3(x: 0.0, y: 0.0, z: 0.0),
-  #  up: Vector3(x: 0.0, y: 1.0, z: 0.0),
-  #  fovy: 45.0,
-  #  projection: Perspective
-  #)
+  var camera = Camera3D(
+    position: Vector3(x: 1.0f, y: 1.0f, z: 1.0f),
+    target: Vector3(x: 0.0f, y: 0.0f, z: 0.0f),
+    up: Vector3(x: 0.0f, y: 1.0f, z: 0.0f),
+    fovy: 45.0f,
+    projection: Perspective
+  )
 
-  var cubemapLoc = getShaderLocation(shader, "cubemap")
-  var chromaticDispersionLoc = getShaderLocation(shader, "chromaticDispersion")
-  var biasLoc = getShaderLocation(shader, "bias")
-  var scaleLoc = getShaderLocation(shader, "scale")
-  var powerLoc = getShaderLocation(shader, "power")
-  var aLoc = getShaderLocation(shader, "a")
-  var bLoc = getShaderLocation(shader, "b")
-  var cLoc = getShaderLocation(shader, "c")
-  var dLoc = getShaderLocation(shader, "d")
-  var tdeltaLoc = getShaderLocation(shader, "tdelta")
-  var pdeltaLoc = getShaderLocation(shader, "pdelta")
-  var timeLoc = getShaderLocation(shader, "time")
-  var lightPosLoc = getShaderLocation(shader, "lightPos")
-  var viewLoc = getShaderLocation(shader, "view")
+  var cubemapSkyboxLoc = getShaderLocation(skyboxShader, "environmentMap")
+  var cubemapModelLoc = getShaderLocation(modelShader, "environmentMap")
+  var chromaticDispersionLoc = getShaderLocation(modelShader, "chromaticDispersion")
+  var biasLoc = getShaderLocation(modelShader, "bias")
+  var scaleLoc = getShaderLocation(modelShader, "scale")
+  var powerLoc = getShaderLocation(modelShader, "power")
+  var aLoc = getShaderLocation(modelShader, "a")
+  var bLoc = getShaderLocation(modelShader, "b")
+  var cLoc = getShaderLocation(modelShader, "c")
+  var dLoc = getShaderLocation(modelShader, "d")
+  var tdeltaLoc = getShaderLocation(modelShader, "tdelta")
+  var pdeltaLoc = getShaderLocation(modelShader, "pdelta")
+  var viewLoc = getShaderLocation(modelShader, "view")
 
-  echo "cubemap ", cubemapLoc.int32
+  echo "environmentMap ", cubemapSkyboxLoc.int32
+  echo "environmentMap ", cubemapModelLoc.int32
   echo "chromaticDispersion ", chromaticDispersionLoc.int32
   echo "bias ", biasLoc.int32
   echo "scale ", scaleLoc.int32
@@ -263,8 +244,6 @@ proc main() =
   echo "d ", dLoc.int32
   echo "tdelta ", tdeltaLoc.int32
   echo "pdelta ", pdeltaLoc.int32
-  echo "time ", timeLoc.int32
-  echo "lightPos ",lightPosLoc.int32
   echo "view ", viewLoc.int32
 
   var chromaticDispersion = Vector3(x:0.98, y:1, z:1.033)
@@ -277,39 +256,31 @@ proc main() =
   var d: float32 = 4
   var tdelta: float32 = 0.1
   var pdelta: float32 = 0.1
-  var time: float32 = 0.0
-  var lightPos = Vector3(x: 10.0, y: 10.0, z: 10.0)
   var viewMatrix = getCameraMatrix(camera)
 
-  var normalColor = Red
-  var shaderColor = Vector4(
-    x:normalColor.r.float32/255.0'f32,
-    y:normalColor.g.float32/255.0'f32,
-    z:normalColor.b.float32/255.0'f32,
-    w:normalColor.a.float32/255.0'f32
-    )
-
   var screenSize = [getScreenWidth().float32, getScreenHeight().float32]
-  setShaderValue(shader, getShaderLocation(shader, "size"), screenSize)
+  var mapIndex: int32 = MaterialMapIndex.Cubemap.int32
+
+  setShaderValue(modelShader, getShaderLocation(modelShader, "size"), screenSize)
+  setShaderValue(skyboxShader, getShaderLocation(skyboxShader, "size"), screenSize)
+  setShaderValue(skyboxShader, cubemapSkyboxLoc, mapIndex)
+  setShaderValue(modelShader, cubemapModelLoc, mapIndex)
 
   setTargetFPS(6) # Set our game to run at 60 frames-per-second
   var frame = 0
   while not windowShouldClose(): # Detect window close button or ESC key
-    time += getFrameTime()
-    setShaderValueTexture(shader, cubemapLoc, cubemap)
-    setShaderValue(shader, chromaticDispersionLoc, chromaticDispersion)
-    setShaderValue(shader, biasLoc, bias.float32)
-    setShaderValue(shader, scaleLoc, scale.float32)
-    setShaderValue(shader, powerLoc, power.float32)
-    setShaderValue(shader, aLoc, a.float32)
-    setShaderValue(shader, bLoc, b.float32)
-    setShaderValue(shader, cLoc, c.float32)
-    setShaderValue(shader, dLoc, d.float32)
-    setShaderValue(shader, tdeltaLoc, tdelta.float32)
-    setShaderValue(shader, pdeltaLoc, pdelta.float32)
-    setShaderValue(shader, timeLoc, time)
-    setShaderValue(shader, lightPosLoc, lightPos)
-    setShaderValueMatrix(shader, viewLoc, viewMatrix)
+    # setShaderValueTexture(modelShader, cubemapLoc, cubemap)
+    setShaderValue(modelShader, chromaticDispersionLoc, chromaticDispersion)
+    setShaderValue(modelShader, biasLoc, bias.float32)
+    setShaderValue(modelShader, scaleLoc, scale.float32)
+    setShaderValue(modelShader, powerLoc, power.float32)
+    setShaderValue(modelShader, aLoc, a.float32)
+    setShaderValue(modelShader, bLoc, b.float32)
+    setShaderValue(modelShader, cLoc, c.float32)
+    setShaderValue(modelShader, dLoc, d.float32)
+    setShaderValue(modelShader, tdeltaLoc, tdelta.float32)
+    setShaderValue(modelShader, pdeltaLoc, pdelta.float32)
+    setShaderValueMatrix(modelShader, viewLoc, viewMatrix)
 
     var rotationAngles = Vector3(x:0.0, y:0.0, z:0.0) # Rotate around Y-axis
     frame = frame + 1
@@ -320,17 +291,18 @@ proc main() =
       Vector2.zero, White)
     beginMode3D(camera)
     updateCamera(camera, Orbital)
-    beginShaderMode(shader)
-    # Works, but color has no effect, since shader overrides
-    #drawSphereWires(Vector3(x:0, y:0, z:0), 3.0f, 64, 64, White)
-    # Works, but color has no effect, since shader overrides
-    # drawSphere(Vector3(x:0, y:0, z:0), 3.0f, 64, 64, White)
 
-    # drawMesh(model.meshes[0], model.materials[0], rotateXYZ(rotationAngles))
-    #drawModelWires(model, Vector3(x:0, y:0, z:0), 0.5f, Blue)
-    drawModel(model, Vector3(x:0, y:0, z:0), 0.5f, White)
+    disableBackfaceCulling()
+
+    beginShaderMode(modelShader)
+    drawModel(model, Vector3(x:0, y:0, z:0), 0.04f, White)
     endShaderMode()
-    drawModel(cubeModel, Vector3(x:0, y:0, z:0), 0.5f, White)
+
+    beginShaderMode(skyboxShader)
+    drawModel(skybox, Vector3(x: 0, y: 0, z: 0), 10.0f, White)
+    endShaderMode()
+
+    enableBackfaceCulling()
     endMode3D()
     a += rand(1.0) - 0.5f
     if a > 5:
