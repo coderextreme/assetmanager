@@ -196,7 +196,7 @@ type Flower = ref object
 
 proc initialize(self: var Flower) =
   self.translation = Vector3(x:0, y:0, z:0)
-  self.velocity = Vector3( x:rand(1.0) * 0.2 - 0.1, y:rand(1.0) * 0.2 - 0.1, z:rand(1.0) * 0.2 - 0.1)
+  self.velocity = Vector3( x:rand(1.0) * 0.02 - 0.01, y:rand(1.0) * 0.02 - 0.01, z:rand(1.0) * 0.02 - 0.01)
 
 proc build(self: var Flower) =
   var sphere = genMeshSphere(10, 64, 64)
@@ -280,22 +280,22 @@ proc animate(self: var Flower, camera: var Camera3D) =
   drawModel(self.model, self.translation, 0.04f, White)
   endShaderMode()
 
-  self.a += rand(1.0) - 0.5f
+  self.a += rand(1.0) * 0.02 - 0.1f
   if self.a > 20:
     self.a = 20
   if self.a < -20:
     self.a = -20
-  self.b += rand(1.0) - 0.5f
+  self.b += rand(1.0) * 0.02 - 0.1f
   if self.b > 20:
     self.b = 20
   if self.b < -20:
     self.b = -20
-  self.c += trunc((rand(10) - 5).float32)
+  self.c += rand(1.0) * 0.5 - 0.25
   if self.c > 5:
     self.c = 5
   if self.c < -5:
     self.c = -5
-  self.d += trunc((rand(10) - 5).float32)
+  self.d += rand(1.0) * 0.5 - 0.25
   if self.d > 5:
     self.d = 5
   if self.d < -5:
@@ -320,9 +320,9 @@ proc animate(self: var Flower, camera: var Camera3D) =
     elif system.abs(self.translation.z) > 10:
       initialize(self);
     else:
-      self.velocity.x += rand(1.0) * 0.2 - 0.1;
-      self.velocity.y += rand(1.0) * 0.2 - 0.1;
-      self.velocity.z += rand(1.0) * 0.2 - 0.1;
+      self.velocity.x += rand(1.0) * 0.02 - 0.01;
+      self.velocity.y += rand(1.0) * 0.02 - 0.01;
+      self.velocity.z += rand(1.0) * 0.02 - 0.01;
 
 const
   OrbitSpeed = 0.5f
@@ -391,7 +391,7 @@ proc main() =
 
   var flowers: seq[Flower]
 
-  let FLOWERS = 7
+  let FLOWERS = 25
 
   for f in 0..FLOWERS:
     flowers.add(Flower())
@@ -408,7 +408,7 @@ proc main() =
   setShaderValue(skyboxShader, getShaderLocation(skyboxShader, "size"), screenSize)
   setShaderValue(skyboxShader, cubemapSkyboxLoc, mapIndex)
 
-  setTargetFPS(3) # Throttle to 3 FPS
+  setTargetFPS(60) # Throttle to 3 FPS
 
   var orbit = initOrbitCamera()
 
