@@ -1,5 +1,3 @@
-#   Copyright (c) 2024 by John Carlson
-
 import raylib, raymath, rlgl, random, math
 
 const
@@ -129,7 +127,7 @@ void main()
     fragNormal = mvm3*rose_normal(vertexPosition, a, b, c, d, tdelta, pdelta);
     fragTexCoord = vertexTexCoord;
     fragColor = vertexColor;
-    fragPosition = vertexPosition;
+    fragPosition = cart2sphere(vertexPosition);//vertexPosition;
 
     vec3 incident = normalize((view * vec4(rose(cart2sphere(vertexPosition), a, b, c, d, tdelta, pdelta), 1.0)).xyz);
 
@@ -198,16 +196,16 @@ type Flower = ref object
 
 proc initialize(self: var Flower) =
   self.translation = Vector3(x:0, y:0, z:0)
-  self.velocity = Vector3( x:rand(1.0) - 0.5, y:rand(1.0) - 0.5, z:rand(1.0) - 0.5)
+  self.velocity = Vector3( x:rand(1.0) * 0.2 - 0.1, y:rand(1.0) * 0.2 - 0.1, z:rand(1.0) * 0.2 - 0.1)
 
 proc build(self: var Flower) =
-  var sphere = genMeshSphere(4, 64, 64)
+  var sphere = genMeshSphere(10, 64, 64)
   self.model = loadModelFromMesh(sphere)
   self.modelShader = loadShaderFromMemory(vertexModelShader, fragmentModelShader)
   self.model.materials[0].shader = self.modelShader
 
-  var image = loadImage("resources/images/all_probes/stpeters_cross.png")  # Replace with your texture path
-  self.cubemap = loadTextureCubemap(image, CubemapLayout.AutoDetect);
+  var image = loadImage("resources/images/all_probes/stpeters_cross.png")  # TODO Replace with your texture path
+  self.cubemap = loadTextureCubemap(image, CubemapLayout.CrossThreeByFour);
 
   # Debugging output
   if self.model.meshCount == 0:
@@ -283,15 +281,15 @@ proc animate(self: var Flower, camera: var Camera3D) =
   endShaderMode()
 
   self.a += rand(1.0) - 0.5f
-  if self.a > 5:
-    self.a = 5
-  if self.a < -5:
-    self.a = -5
+  if self.a > 20:
+    self.a = 20
+  if self.a < -20:
+    self.a = -20
   self.b += rand(1.0) - 0.5f
-  if self.b > 5:
-    self.b = 5
-  if self.b < -5:
-    self.b = -5
+  if self.b > 20:
+    self.b = 20
+  if self.b < -20:
+    self.b = -20
   self.c += trunc((rand(10) - 5).float32)
   if self.c > 5:
     self.c = 5
@@ -326,6 +324,48 @@ proc animate(self: var Flower, camera: var Camera3D) =
       self.velocity.y += rand(1.0) * 0.2 - 0.1;
       self.velocity.z += rand(1.0) * 0.2 - 0.1;
 
+const
+  OrbitSpeed = 0.5f
+  MinDistance = 5.0f
+  MaxDistance = 15.0f
+
+type
+  OrbitCamera = object
+    camera: Camera3D
+    angle: float32
+    distance: float32
+    target: Vector3
+
+proc initOrbitCamera(): OrbitCamera =
+  result = OrbitCamera(
+    camera: Camera3D(
+      position: Vector3(x: 2.0f, y: 2.0f, z: 2.0f),
+      target: Vector3(x: 0.0f, y: 0.0f, z: 0.0f),
+      up: Vector3(x: 0.0f, y: 1.0f, z: 0.0f),
+      fovy: 45.0f,
+      projection: Perspective
+    ),
+    angle: 0.0f,
+    distance: 10.0f,
+    target: Vector3(x: 0.0f, y: 0.0f, z: 0.0f)
+  )
+
+proc updateOrbitCamera(orbit: var OrbitCamera) =
+  # Handle mouse input for rotation
+  if isMouseButtonDown(MouseButton.Left):
+    let deltaX = getMouseDelta().x
+    orbit.angle -= deltaX * OrbitSpeed * getFrameTime()
+
+  # Handle mouse wheel for zoom
+  let wheel = getMouseWheelMove()
+  if wheel != 0.0f:
+    orbit.distance = clamp(orbit.distance - wheel, MinDistance, MaxDistance)
+
+  # Calculate new camera position
+  orbit.camera.position.x = orbit.target.x + sin(orbit.angle) * orbit.distance
+  orbit.camera.position.z = orbit.target.z + cos(orbit.angle) * orbit.distance
+  orbit.camera.position.y = orbit.target.y + orbit.distance * 0.5f
+
 proc main() =
   # Initialization
   # --------------------------------------------------------------------------------------
@@ -338,7 +378,6 @@ proc main() =
   skybox.materials[0].shader = skyboxShader
 
   var image = loadImage("resources/images/all_probes/stpeters_cross.png")  # Replace with your texture path
-  imageFlipHorizontal(image)
   var cubemap = loadTextureCubemap(image, CubemapLayout.AutoDetect);
 
   # Debugging output
@@ -349,15 +388,6 @@ proc main() =
 
   var img = genImageChecked(64, 64, 32, 32, DarkBrown, DarkGray)
   var backgroundTexture = loadTextureFromImage(img)
-
-  # Define camera
-  var camera = Camera3D(
-    position: Vector3(x: 1.0f, y: 1.0f, z: 1.0f),
-    target: Vector3(x: 0.0f, y: 0.0f, z: 0.0f),
-    up: Vector3(x: 0.0f, y: 1.0f, z: 0.0f),
-    fovy: 45.0f,
-    projection: Perspective
-  )
 
   var flowers: seq[Flower]
 
@@ -378,21 +408,23 @@ proc main() =
   setShaderValue(skyboxShader, getShaderLocation(skyboxShader, "size"), screenSize)
   setShaderValue(skyboxShader, cubemapSkyboxLoc, mapIndex)
 
-  setTargetFPS(6) # Throttle to 6 FPS
-  while not windowShouldClose(): # Detect window close button or ESC key
+  setTargetFPS(3) # Throttle to 3 FPS
 
+  var orbit = initOrbitCamera()
+
+  while not windowShouldClose(): # Detect window close button or ESC key
+    updateOrbitCamera(orbit)
     beginDrawing()
     clearBackground(White)
     drawTexture(backgroundTexture,
       Rectangle(x: 0, y: 0, width: getScreenWidth().float32, height: getScreenHeight().float32),
       Vector2.zero, White)
-    beginMode3D(camera)
-    updateCamera(camera, Orbital)
+    beginMode3D(orbit.camera)
 
     disableBackfaceCulling()
 
     for f in 0..FLOWERS:
-      animate(flowers[f], camera)
+      animate(flowers[f], orbit.camera)
 
     beginShaderMode(skyboxShader)
     drawModel(skybox, Vector3(x: 0, y: 0, z: 0), 10.0f, White)
