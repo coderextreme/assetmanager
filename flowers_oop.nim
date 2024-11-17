@@ -408,7 +408,7 @@ proc main() =
   setShaderValue(skyboxShader, getShaderLocation(skyboxShader, "size"), screenSize)
   setShaderValue(skyboxShader, cubemapSkyboxLoc, mapIndex)
 
-  setTargetFPS(60) # Throttle to 3 FPS
+  setTargetFPS(60)
 
   var orbit = initOrbitCamera()
 
