@@ -1,0 +1,14 @@
+{
+  "name": "assetmanager",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "browserify flowers_oop.mjs -p esmify > bundle.js"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.1",
+    "esmify": "^0.1.2"
+  }
+}

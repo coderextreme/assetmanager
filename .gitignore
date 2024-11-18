@@ -1,4 +1,5 @@
 nimcache/
 nimblecache/
 htmldocs/
+node_modules/
 *.exe
