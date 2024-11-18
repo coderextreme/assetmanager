@@ -28,6 +28,7 @@ void main() {
     gl_FragColor = vec4(color, 1.0);
 }`;
 
+/*
 const vertexModelShader = `
 varying vec3 vNormal;
 varying vec3 vPosition;
@@ -118,8 +119,8 @@ void main() {
     // Mix reflected and refracted colors based on fresnel
     gl_FragColor = mix(refractedColor, reflectedColor, fresnel);
 }`;
+*/
 
-/*
 // Simplified vertex shader for spheres
 const vertexModelShader = `
 varying vec3 vNormal;
@@ -177,7 +178,6 @@ void main() {
     // Mix reflected and refracted colors based on fresnel
     gl_FragColor = mix(refractedColor, reflectedColor, fresnel);
 }`;
-*/
 
 class Flower {
     constructor(scene, environmentMap) {
