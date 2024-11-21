@@ -104,7 +104,31 @@ proc main =
   let count = 5
   let spacing = 4
   let count_times_spacing = count * spacing
-  var anims: RArray[ModelAnimation] = loadModelAnimations("resources/JoeSkinTexcoordDisplacerKickUpdate2Export.gltf")
+  # Error checking for joeModel loading
+  if joeModel.meshCount == 0:
+    echo "Failed to load joeModel"
+    return
+
+  echo "Successfully loaded joeModel with ", joeModel.meshCount, " meshes"
+  echo "Material count: ", joeModel.materialCount
+  echo "Bone count: ", joeModel.boneCount
+
+  # Try loading animations with error handling
+  var animations: RArray[ModelAnimation]
+  var animsCount: int32 = 0
+
+  try:
+    # First check if the joeModel has any bones
+    if joeModel.boneCount >= 0:
+      animations = loadModelAnimations("resources/JoeSkinTexcoordDisplacerKickUpdate2Export.gltf")
+      animsCount = animations.len.int32
+      echo "Successfully loaded ", animsCount, " animations"
+    else:
+      echo "Model has no bones for animation"
+  except RaylibError:
+    echo "Failed to load animations - continuing without animations"
+    animsCount = 0
+
 
   var frame : int32 = 0
   while not windowShouldClose():
@@ -132,9 +156,9 @@ proc main =
 
     # Animation
     # beginShaderMode(shader)
-    if anims.len > 0:
-      for i in 0..<anims.len:
-        var anim = move(anims[i])
+    if animations.len > 0:
+      for i in 0..<animations.len:
+        var anim = move(animations[i])
         frame = frame + 1
         # Joe Kick
         updateModelAnimation(joeModel, anim, frame)
