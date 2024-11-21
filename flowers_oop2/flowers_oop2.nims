@@ -29,3 +29,5 @@ when defined(emscripten):
   --passL:"--preload-file resources/shaders/300es/modelShader.vs@/modelShader.vs"
   --passL:"--preload-file resources/shaders/300es/modelShader.fs@/modelShader.fs"
   --passL:"--preload-file resources/images/all_probes/stpeters_cross.png@/stpeters_cross.png"
+  --passL:"-s USE_GLFW=3"
+  --passL:"-s ASYNCIFY"
