@@ -1,0 +1,67 @@
+import os, math, raylib, raymath, rlgl
+
+const
+  screenWidth = 800
+  screenHeight = 450
+
+proc customMatrixPerspective(fovy, aspect, znear, zfar: float32): Matrix =
+    let top = znear * sin(fovy * 3.141592654 / 360.0)/cos(fovy * 3.141592654 / 360.0)
+    let right = top * aspect
+    result = Matrix(
+      m0: znear / right,  m1: 0.0,           m2: 0.0,                          m3: 0.0,
+      m4: 0.0,            m5: znear / top,    m6: 0.0,                          m7: 0.0,
+      m8: 0.0,            m9: 0.0,           m10: -(zfar + znear) / (zfar - znear), m11: -1.0,
+      m12: 0.0,           m13: 0.0,           m14: -(2.0 * zfar * znear) / (zfar - znear), m15: 0.0
+    )
+    return result
+
+proc main =
+  initWindow(screenWidth, screenHeight, "JSONverse shaders example - skybox")
+  defer: closeWindow()
+
+  var images: array[6, Image] = [
+    loadImage("resources/images/all_probes/stpeters_cross/stpeters_right.png"),
+    loadImage("resources/images/all_probes/stpeters_cross/stpeters_left.png"),
+    loadImage("resources/images/all_probes/stpeters_cross/stpeters_top.png"),
+    loadImage("resources/images/all_probes/stpeters_cross/stpeters_bottom.png"),
+    loadImage("resources/images/all_probes/stpeters_cross/stpeters_front.png"),
+    loadImage("resources/images/all_probes/stpeters_cross/stpeters_back.png")
+  ]
+
+  # let hdrTexture = loadImage("C:/Users/jcarl/Downloads/stpeters_cross.hdr")
+  let cubemap = loadTextureCubemap(images, CubemapLayout.CrossThreeByFour)
+
+  let shader = loadShader("", "shaders/rlskybox.fs")
+  let cubemapLoc = getShaderLocation(shader, "cubemap")
+
+  let skybox = genMeshCube(1.0f, 1.0f, 1.0f)
+  let skyboxModel = loadModelFromMesh(skybox)
+  # let material = skyboxModel.materials[0]
+  # material.maps[CUBEMAP].texture = cubemap
+  # setMaterialTexture(skyboxModel.materials[0], CUBEMAP, cubemap)
+
+  let screenSize = [getScreenWidth().float32, getScreenHeight().float32]
+  setShaderValueTexture(shader, cubemapLoc, cubemap)
+  setShaderValue(shader, getShaderLocation(shader, "size"), screenSize)
+
+  setTargetFPS(60)
+
+  while not windowShouldClose():
+    beginDrawing()
+    clearBackground(Black)
+
+    let camera = Camera(
+      position : Vector3( x:0.0f, y:0.5f, z:0.5f ),
+      target :   Vector3( x:0.0f, y:0.0f, z:0.0f ),
+      up :       Vector3( x:0.0f, y:1.0f, z:0.0f ),
+      fovy : 45.0f,
+      projection : Perspective
+    )
+
+    beginMode3D(camera)
+    drawModel(skyboxModel, camera.position, 1.0f, White)
+    endMode3D()
+
+    endDrawing()
+
+main()

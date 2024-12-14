@@ -2,7 +2,7 @@
   "name": "assetmanager",
   "version": "1.0.0",
   "scripts": {
-    "build": "browserify flowers_oop.mjs -t [ babelify --presets [@babel/preset-env] --global ] --outfile bundle.js",
+    "build": "browserify flowers_oop.mjs -t [ babelify --presets [@babel/preset-env] --global ] --outfile bundle.js"
   },
   "dependencies": {
     "browserify": "^17.0.0",
