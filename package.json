@@ -5,15 +5,18 @@
     "build": "browserify flowers_oop.mjs -t [ babelify --presets [@babel/preset-env] --global ] --outfile bundle.js"
   },
   "dependencies": {
-    "browserify": "^17.0.1",
-    "three": "^0.162.0",
-    "glob": "^13.0.0",
+    "browserify": "17.0.1",
+    "three": "0.162.0",
+    "glob": "13.0.0",
     "debug": "4.4.3"
   },
+  "overrides": {
+    "elliptic": "file:elliptic"
+  },
   "devDependencies": {
-    "@babel/core": "^7.24.0",
-    "@babel/preset-env": "^7.24.0",
-    "babelify": "^10.0.0"
+    "@babel/core": "7.24.0",
+    "@babel/preset-env": "7.24.0",
+    "babelify": "10.0.0"
   },
   "browserify": {
     "transform": [
