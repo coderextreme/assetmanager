@@ -6,16 +6,16 @@
   },
   "dependencies": {
     "browserify": "17.0.1",
-    "three": "0.162.0",
-    "glob": "13.0.0",
+    "three": "0.183.2",
+    "glob": "13.0.6",
     "debug": "4.4.3"
   },
   "overrides": {
     "elliptic": "file:elliptic"
   },
   "devDependencies": {
-    "@babel/core": "7.24.0",
-    "@babel/preset-env": "7.24.0",
+    "@babel/core": "7.29.7",
+    "@babel/preset-env": "7.29.7",
     "babelify": "10.0.0"
   },
   "browserify": {
